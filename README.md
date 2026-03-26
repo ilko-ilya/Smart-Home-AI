@@ -92,7 +92,7 @@ Response:
 
 **Backend:**
 - Java 21
-- Spring Boot 3.2+
+- Spring Boot 4.0.4
 - Spring Data JPA
 - PostgreSQL
 
