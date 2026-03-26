@@ -1,0 +1,14 @@
+# Секреты
+**/.env
+**/.env.*
+
+# Среды разработки
+**/.idea/
+**/.vscode/
+
+# Сборка Backend
+**/target/
+
+# Сборка Frontend
+**/node_modules/
+**/.next/
