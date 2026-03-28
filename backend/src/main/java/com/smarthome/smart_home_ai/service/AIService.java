@@ -32,43 +32,42 @@ public class AIService {
     private String apiUrl;
 
     public AiResponseDto getRecommendation() {
-        // 1. СОБИРАЕМ ДАННЫЕ СО ВСЕГО ДОМА
+        // 1. ЗБИРАЄМО ДАНІ З УСЬОГО БУДИНКУ
         Double outsideTemp = weatherService.getCurrentOutsideTemperature();
         SensorDataDto insideData = getLatestSensorDataSafe();
         List<DeviceDto> devices = deviceService.getAllDevices();
 
-        // Фильтруем только включенные устройства
+        // Фільтруємо тільки увімкнені пристрої
         String activeDevices = devices.stream()
                 .filter(d -> d.status() == DeviceStatus.ON)
                 .map(DeviceDto::name)
                 .collect(Collectors.joining(", "));
 
-        if (activeDevices.isEmpty()) activeDevices = "Ничего не включено";
+        if (activeDevices.isEmpty()) activeDevices = "Нічого не увімкнено";
 
-        // 2. ФОРМИРУЕМ PROMPT (Текст запроса)
+        // 2. ФОРМУЄМО PROMPT (Текст запиту українською)
         String prompt = String.format(
-                "Температура на улице: %s °C. " +
-                        "Температура дома: %s °C (влажность %s%%). " +
-                        "Включенные устройства: %s. " +
-                        "Опираясь на эти данные, дай короткий, полезный и креативный совет (1-2 предложения) по комфорту или энергосбережению. Обращайся к пользователю 'сэр'.",
+                "Температура надворі: %s °C. " +
+                        "Температура вдома: %s °C (вологість %s%%). " +
+                        "Увімкнені пристрої: %s. " +
+                        "Спираючись на ці дані, дай коротку, корисну та креативну пораду (1-2 речення) щодо комфорту або енергозбереження. Обов'язково звертайся до користувача 'сер'.",
                 outsideTemp,
-                insideData != null ? insideData.temperature() : "Неизвестно",
-                insideData != null ? insideData.humidity() : "Неизвестно",
+                insideData != null ? insideData.temperature() : "Невідомо",
+                insideData != null ? insideData.humidity() : "Невідомо",
                 activeDevices
         );
 
-        log.info("Запрашиваем совет у ИИ: {}", prompt);
+        log.info("Запитуємо пораду в ШІ: {}", prompt);
 
-        // 3. ВЫЗЫВАЕМ БЕСПЛАТНУЮ НЕЙРОСЕТЬ (Llama 3.1)
+        // 3. ВИКЛИКАЄМО НЕЙРОМЕРЕЖУ (Llama 3.1)
         try {
             Map<String, Object> requestBody = Map.of(
                     "model", "llama-3.1-8b-instant",
                     "messages", List.of(
-                            // Даем нейросети роль!
-                            Map.of("role", "system", "content", "Ты AI-ассистент умного дома (Джарвис). Отвечай коротко, по делу, с долей вежливого сарказма или заботы."),
+                            Map.of("role", "system", "content", "Ти елітний AI-дворецький (Джарвіс). Твоя мета - дати ОДНУ коротку та абсолютно логічну пораду (максимум 2 речення). Категорично заборонено повторювати слова або писати безглуздий текст. Завжди звертайся до користувача 'сер'."),
                             Map.of("role", "user", "content", prompt)
                     ),
-                    "temperature", 0.7 // Здесь 0.7 нормально, так как нам нужна креативность для генерации советов
+                    "temperature", 0.3 // 🔥 Знизили температуру, щоб прибрати галюцинації
             );
 
             JsonNode rootResponse = restClient.post()
@@ -85,11 +84,16 @@ public class AIService {
                     .path("content")
                     .asString();
 
+            // Додаткова перевірка: якщо ІА все ж таки видав бред, обрізаємо його
+            if (advice.length() > 200) {
+                advice = advice.substring(0, 200) + "...";
+            }
+
             return new AiResponseDto(advice);
 
         } catch (Exception e) {
-            log.error("Ошибка при запросе к Groq API: {}", e.getMessage(), e);
-            return new AiResponseDto("Простите, сэр. Мои модули анализа среды временно недоступны.");
+            log.error("Помилка під час запиту до Groq API: {}", e.getMessage(), e);
+            return new AiResponseDto("Вибачте, сер. Мої модулі аналізу тимчасово перевантажені.");
         }
     }
 

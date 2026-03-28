@@ -1,60 +1,110 @@
 # 🏠 Smart Home AI (Jarvis)
 
-**Smart Home AI** is a modern full-stack smart home application. The project demonstrates how to integrate a Large Language Model (LLM) into backend logic for device control, climate monitoring, and context-aware recommendations using the **Orchestrator pattern**.
+**Smart Home AI** is a production-like full-stack smart home system that integrates AI into backend decision-making workflows using the **Orchestrator pattern**.
 
-![Smart Home Dashboard](./screenshot.jpg)
+> **🎙️ VOICE-FIRST EXPERIENCE:**
+> This application is designed to be fully voice-controlled. You speak to Jarvis using natural language (Speech-to-Text), and Jarvis not only executes your commands but **verbally speaks back to you** (Text-to-Speech) to confirm actions, explain decisions, and give proactive environmental recommendations.
+
+![Smart Home Dashboard](./Animation.gif)
 
 ---
 
 ## 💡 Why This Project Matters (Engineering Challenges)
 
-This project solves several non-trivial problems and showcases system design skills:
+This project demonstrates solving real-world backend challenges:
 
-- **LLM Integration into Backend Logic:** AI is used not just as a chatbot, but as a functional part of the system
-- **AI Response Parsing & Validation:** Reliable extraction and validation of structured JSON from LLM responses
-- **Data Orchestration:** Aggregation of data from database (devices), sensors, and external APIs (weather)
-- **Voice Control:** Real-time command processing using Web Speech API
-- **Hybrid Architecture:** Combination of deterministic logic and probabilistic AI
+- **AI as a System Component:** AI is used as a decision-making part of backend logic, not just a chatbot.
+- **AI Response Parsing & Validation:** Structured JSON extraction and validation from LLM responses.
+- **Data Orchestration:** Aggregation of data from the database (devices), sensors, and external APIs (weather).
+- **Voice Control & Audio Feedback:** Real-time command processing with Web Speech API integration for a complete two-way audio interface.
+- **Hybrid Architecture:** Combination of deterministic logic and probabilistic AI.
 
 ---
 
-## 🚀 Key Features
+## 🧠 Architecture Overview
 
-### ⚙️ Hybrid Approach (AI + Rule-based)
+The backend follows the **Orchestrator pattern**:
 
-The system uses a combined approach for maximum reliability:
+- `JarvisService` acts as the central orchestrator.
+- It coordinates:
+  - `DeviceService`
+  - `WeatherService`
+  - `SensorDataService`
+  - `AIClient`
+
+### Flow:
+
+1. User sends command (voice or text).
+2. `JarvisService` aggregates system context.
+3. AI processes request (if needed).
+4. Backend executes actions.
+5. Response is returned and **verbally spoken** by the UI.
+
+👉 Clear separation of concerns + controlled AI usage.
+
+---
+
+## 🤖 How AI Works
+
+- Backend sends structured prompts to LLM (Llama 3.1 via Groq).
+- Model returns structured responses.
+- Responses are validated before execution.
+- If parsing fails → fallback logic is applied.
+
+### Example AI response:
+
+```json
+{
+  "action": "TURN_ON",
+  "device": "LIGHT",
+  "room": "KITCHEN"
+}
+```
+
+---
+
+## ⚙️ Hybrid Approach (AI + Rule-based)
+
+To ensure reliability:
 
 - **Critical scenarios** ("I'm home", "I'm leaving")  
-  → handled by backend logic (without AI)
+  → handled by backend logic (NO AI).
 
 - **Flexible commands** ("make it comfortable", "turn something on")  
-  → handled by LLM (AI)
+  → handled by AI.
 
-💡 This approach increases reliability and reduces dependency on external AI APIs.
-
----
-
-### 🏡 Smart Automation Scenarios
-
-- **"I'm leaving":**  
-  security system ON, vacuum ON, all other devices OFF
-
-- **"I'm home":**  
-  security system OFF, hallway light ON, music ON (20% volume)
+💡 This reduces dependency on external AI APIs and improves stability.
 
 ---
 
-### 🧠 AI Assistant (Jarvis)
+## 🏡 Smart Automation Scenarios
 
-- **LLM:** Llama 3.1 (via Groq API)
-- Analyzes:
-  - outside temperature
-  - indoor climate
-  - active devices
+- **"I'm leaving":**
+  - security system ON
+  - vacuum ON
+  - all other devices OFF
 
-- Generates recommendations for:
-  - comfort
-  - energy efficiency
+- **"I'm home":**
+  - security system OFF
+  - hallway light ON
+  - music ON (20% volume)
+
+---
+
+## 🗣️ AI Assistant (Jarvis)
+
+- **LLM:** Llama 3.1 (Groq API)
+- **Voice interaction:** Web Speech API (STT & TTS)
+
+**Jarvis:**
+- executes commands
+- explains actions verbally (Voice Synthesis)
+- gives proactive recommendations
+
+**Context used for analysis:**
+- outside temperature
+- indoor climate
+- active devices
 
 ---
 
@@ -64,14 +114,14 @@ The system uses a combined approach for maximum reliability:
 
 ```json
 {
-  "text": "turn on kitchen light"
+  "text": "увімкни світло на кухні"
 }
 ```
 
 Response:
 
-```
-Done, sir. Devices updated: 1
+```text
+Зроблено, сер. Світло увімкнено.
 ```
 
 ---
@@ -82,7 +132,7 @@ Response:
 
 ```json
 {
-  "advice": "Sir, it's quite cold outside. I recommend turning on heating."
+  "advice": "Сер, надворі прохолодно. Рекомендую увімкнути теплу підлогу."
 }
 ```
 
@@ -90,33 +140,43 @@ Response:
 
 ## 🧱 Tech Stack
 
-**Backend:**
+### Backend
 - Java 21
 - Spring Boot 4.0.4
 - Spring Data JPA
 - PostgreSQL
 
-**HTTP Client:**
-- RestClient (modern Spring 6 client)
-
-**Frontend:**
+### Frontend
 - Next.js
 - React
 - TypeScript
 - Tailwind CSS
 
-**AI:**
+### AI & Voice
 - Llama 3.1 (Groq API)
+- Web Speech API (STT/TTS)
 
-**DevOps:**
+### DevOps
 - Docker
 - Docker Compose
 
 ---
 
+## 🐳 Infrastructure
+
+The system is fully containerized:
+
+- Backend (Spring Boot)
+- Frontend (Next.js)
+- PostgreSQL
+
+All services run seamlessly via Docker Compose.
+
+---
+
 ## 📂 Project Structure
 
-```
+```text
 smart-home-AI/
 ├── backend/
 │   ├── src/main/java/...
@@ -124,7 +184,7 @@ smart-home-AI/
 │   └── .env.example
 ├── frontend/
 ├── README.md
-└── screenshot.jpg
+└── Animation.gif
 ```
 
 ---
@@ -134,7 +194,7 @@ smart-home-AI/
 ### 1. Clone repository
 
 ```bash
-git clone https://https://github.com/ilko-ilya/Smart-Home-AI.git
+git clone https://github.com/ilko-ilya/Smart-Home-AI.git
 cd smart-home-AI
 ```
 
@@ -142,7 +202,7 @@ cd smart-home-AI
 
 ### 2. Configure environment
 
-```
+```text
 POSTGRES_USER=postgres
 POSTGRES_PASSWORD=your_password
 GROQ_API_KEY=your_api_key
@@ -161,7 +221,7 @@ docker-compose up -d --build
 
 ### 4. Open in browser
 
-```
+```text
 http://localhost:3000
 ```
 
@@ -172,14 +232,13 @@ http://localhost:3000
 This project demonstrates:
 
 - Full-stack development
-- AI integration in backend systems
-- Voice control
+- AI integration into backend workflows
+- Two-way Voice control & synthesis (Speech-to-Text & Text-to-Speech)
 - System design (Orchestrator pattern)
-- DevOps skills (Docker)
+- Containerized infrastructure
 
 ---
 
 ## 👨‍💻 Author
 
-Ilya Samilyak  
-Java Developer
+**Ilya Samilyak** Java Developer

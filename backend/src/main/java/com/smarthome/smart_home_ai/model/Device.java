@@ -31,7 +31,7 @@ public class Device {
     @GeneratedValue(strategy = IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
+    @Column(unique = true, nullable = false)
     private String name;
 
     @Enumerated(EnumType.STRING)

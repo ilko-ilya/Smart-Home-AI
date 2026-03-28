@@ -38,7 +38,7 @@ services:
 
   frontend:
     build:
-      context: ../smart-home-ui
+      context: ../frontend
       dockerfile: Dockerfile
     container_name: smarthome-frontend
     restart: unless-stopped

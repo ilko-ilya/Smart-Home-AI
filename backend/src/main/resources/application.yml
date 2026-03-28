@@ -1,19 +1,26 @@
 spring:
-  sql:
-    init:
-      mode: always
   datasource:
-    url: jdbc:postgresql://localhost:5432/smarthome
-    username: ${POSTGRES_USER:postgres}
+    url: jdbc:postgresql://db:5432/${POSTGRES_DB}
+    username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
+#
+#  sql:
+#    init:
+#      mode: never
+
   jpa:
     hibernate:
+#      ddl-auto: none
       ddl-auto: update
-    defer-datasource-initialization: true
+#    defer-datasource-initialization: true
     show-sql: true
     properties:
       hibernate:
         format_sql: true
+#
+#  liquibase:
+#    enabled: true
+#    change-log: classpath:db/changelog/db.changelog-master.sql
 
 server:
   port: 8080
