@@ -119,14 +119,14 @@ To ensure reliability:
 
 ```json
 {
-  "text": "увімкни світло на кухні"
+  "text": "turn on the kitchen light"
 }
 ```
 
 Response:
 
 ```text
-Зроблено, сер. Світло увімкнено.
+Done, sir. The light is turned on.
 ```
 
 ---
@@ -137,7 +137,7 @@ Response:
 
 ```json
 {
-  "advice": "Сер, надворі прохолодно. Рекомендую увімкнути теплу підлогу."
+  "advice": "Sir, it's quite chilly outside. I recommend turning on the heated floor."
 }
 ```
 
