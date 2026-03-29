@@ -1,10 +1,15 @@
 # 🏠 Smart Home AI (Jarvis)
 
-**Smart Home AI** is a production-like full-stack smart home system that integrates AI into backend decision-making workflows using the **Orchestrator pattern**.
+AI-powered full-stack smart home system that combines **deterministic backend logic with LLM-based decision-making** using the Orchestrator pattern.
 
-> **🎙️ VOICE-FIRST EXPERIENCE:**
-> This application is designed to be fully voice-controlled. You speak to Jarvis using natural language (Speech-to-Text), and Jarvis not only executes your commands but **verbally speaks back to you** (Text-to-Speech) to confirm actions, explain decisions, and give proactive environmental recommendations.
+## 🚀 Key Highlights
+- Hybrid AI + rule-based architecture for reliability
+- Orchestrator pattern (centralized system coordination)
+- Real-time voice interaction (Speech-to-Text & Text-to-Speech)
+- Context-aware automation (devices, sensors, weather)
 
+> 🎙️ **Voice-first experience:**
+> Control your home using natural language. Jarvis understands voice commands (STT), executes actions, and responds with spoken feedback (TTS), including explanations and proactive recommendations.
 ![Smart Home Dashboard](./Animation.gif)
 
 ---
@@ -194,7 +199,7 @@ smart-home-AI/
 ### 1. Clone repository
 
 ```bash
-git clone https://github.com/ilko-ilya/Smart-Home-AI.git
+git clone https://github.com/ilko-ilya/smart-home-ai.git
 cd smart-home-AI
 ```
 

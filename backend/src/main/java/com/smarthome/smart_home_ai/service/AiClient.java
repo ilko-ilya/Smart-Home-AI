@@ -1,5 +1,6 @@
 package com.smarthome.smart_home_ai.service;
 
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -11,6 +12,7 @@ import java.util.Map;
 
 @Slf4j
 @Service
+@RequiredArgsConstructor
 public class AiClient {
 
     private final RestClient restClient;
@@ -20,10 +22,6 @@ public class AiClient {
 
     @Value("${ai.groq.url}")
     private String apiUrl;
-
-    public AiClient() {
-        this.restClient = RestClient.create();
-    }
 
     public String callAi(String text, String devicesJson) {
         Map<String, Object> requestBody = buildPrompt(text, devicesJson);
