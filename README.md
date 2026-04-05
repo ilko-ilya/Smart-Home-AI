@@ -60,8 +60,9 @@ The system supports a full duplex voice interaction:
 6. **User hears response in real-time**
 
 **Example:**
-*User:* "Jarvis, turn on the lights"  
-*Jarvis:* "Done, sir. The lights are turned on." (spoken)
+
+**User:** "Jarvis, turn on the lights"  
+**Jarvis:** "Done, sir. The lights are turned on." (spoken)
 
 ✔️ Natural conversation experience  
 ✔️ No UI required  
