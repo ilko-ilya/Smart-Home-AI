@@ -1,16 +1,21 @@
 package com.smarthome.smart_home_ai.service;
 
 import com.smarthome.smart_home_ai.dto.AiActionDto;
+import com.smarthome.smart_home_ai.dto.DeviceDto;
 import com.smarthome.smart_home_ai.model.Device;
 import com.smarthome.smart_home_ai.model.enums.DeviceStatus;
 import com.smarthome.smart_home_ai.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import tools.jackson.core.type.TypeReference;
+import tools.jackson.databind.JsonNode;
 import tools.jackson.databind.ObjectMapper;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @Slf4j
@@ -18,87 +23,205 @@ import java.util.Optional;
 @RequiredArgsConstructor
 public class JarvisService {
 
-    private final ScenarioService scenarioService;
     private final AiClient aiClient;
-    private final AiParser aiParser;
+    private final DeviceService deviceService;
     private final DeviceRepository deviceRepository;
     private final ObjectMapper objectMapper;
+    private final SmartSearchTool searchTool;
+    private final ScenarioService scenarioService;
 
     public String processVoiceCommand(String text) {
-        String lowerText = text.toLowerCase();
-
-        // 1. Перевіряємо хардкодні сценарії
-        Optional<String> scenarioResponse = scenarioService.handleScenario(lowerText);
-        return scenarioResponse.orElseGet(() -> handleAiCommand(text));
-
-        // 2. Якщо це не сценарій, відправляємо до ШІ
+        Optional<String> scenarioResponse = scenarioService.handleScenario(text.toLowerCase());
+        return scenarioResponse.orElseGet(() -> handleAgenticWorkflow(text));
     }
 
-    private String handleAiCommand(String text) {
+    private String handleAgenticWorkflow(String text) {
         try {
-            List<Device> allDevices = deviceRepository.findAll();
-            String devicesJson = objectMapper.writeValueAsString(allDevices);
+            // 🔥 Пункт 2.4: Використовуємо DTO замість сирих Entity для контексту LLM
+            List<DeviceDto> devices = deviceService.getAllDevices();
+            String devicesJson = objectMapper.writeValueAsString(devices);
 
-            String rawAiResponse = aiClient.callAi(text, devicesJson);
-            List<AiActionDto> actions = aiParser.parseActions(rawAiResponse);
+            List<Map<String, Object>> messages = new ArrayList<>();
+            messages.add(Map.of("role", "user", "content", text));
 
-            if (actions.isEmpty()) {
-                return "Команду розпізнано, але я не зрозумів, що робити з пристроями.";
+            // 1. Перший виклик (З tools)
+            JsonNode response = aiClient.callAi(messages, devicesJson, true);
+            JsonNode message = response.path("choices").get(0).path("message");
+
+            // якщо без tools, просто повертаємо текст
+            if (!message.has("tool_calls") || message.path("tool_calls").isEmpty()) {
+                return message.path("content").asString();
             }
 
-            return applyActionsAndGenerateMessage(actions);
+            // 2. Правильно зберігаємо історію з content
+            Map<String, Object> assistant = new HashMap<>();
+            assistant.put("role", "assistant");
+            assistant.put("tool_calls", message.path("tool_calls"));
+            if (message.has("content") && !message.path("content").isNull()) {
+                assistant.put("content", message.path("content").asString());
+            }
+            messages.add(assistant);
+
+            boolean needSecondCall = false;
+            StringBuilder fastResponse = new StringBuilder();
+
+            // 3. Виконання tools
+            for (JsonNode toolCall : message.path("tool_calls")) {
+
+                String id = toolCall.path("id").asString();
+                String name = toolCall.path("function").path("name").asString();
+                String args = toolCall.path("function").path("arguments").asString();
+
+                String result;
+
+                if ("control_devices".equals(name)) {
+                    result = executeDeviceControl(args);
+                    fastResponse.append(result).append(" ");
+                } else if ("search_web".equals(name)) {
+                    result = executeWebSearch(args);
+
+                    // Очищаємо сміття з пошуку
+                    result = cleanSearchResult(result);
+                    result += """
+                            
+                            
+                            [СИСТЕМНЕ ПРАВИЛО: На основі цих даних сформуй коротку відповідь для користувача \
+                            українською мовою. ОБОВ'ЯЗКОВО назви точні цифри градусів! НЕ МОВЧИ!]""";
+
+                    needSecondCall = true;
+                } else {
+                    result = "unknown tool";
+                }
+
+                messages.add(Map.of(
+                        "role", "tool",
+                        "tool_call_id", id,
+                        "name", name,
+                        "content", result
+                ));
+            }
+
+            // швидка відповідь без другого AI
+            if (!needSecondCall && !fastResponse.isEmpty()) {
+                return fastResponse.toString().trim();
+            }
+
+            // 4. Другий виклик (БЕЗ tools)
+            JsonNode finalResponse = aiClient.callAi(messages, "{}", false);
+
+            JsonNode contentNode = finalResponse.path("choices")
+                    .get(0)
+                    .path("message")
+                    .path("content");
+
+            String finalText = contentNode.isNull() ? "" : contentNode.asString().trim();
+
+            // 5. Захист від порожнечі
+            if (finalText.isEmpty()) {
+                log.error("❌ Порожня відповідь від AI після search");
+                return "Не вдалося отримати відповідь, сер.";
+            }
+
+            if (finalText.toLowerCase().contains("лог")) {
+                log.warn("❌ AI вернув сміття: {}", finalText);
+                return "Отримав дані, сер. Виводжу їх на екран.";
+            }
+
+            return finalText;
 
         } catch (Exception e) {
-            log.error("AI Workflow Error: ", e);
-            return "Вибачте, сер. Сталася технічна помилка в логіці розумного будинку.";
+            log.error("Agent error:", e);
+            return "Помилка системи, сер.";
         }
     }
 
-    private String applyActionsAndGenerateMessage(List<AiActionDto> actions) {
-        List<Device> devicesToUpdate = new ArrayList<>();
-        List<String> spokenMessages = new ArrayList<>();
+    private String cleanSearchResult(String text) {
+        if (text == null) return "";
+        return text
+                .replaceAll("http\\S+", "") // Видаляємо посилання
+                .replaceAll("(?i)log.*", "") // Видаляємо логи
+                .replaceAll("\\n{2,}", "\n") // Прибираємо порожні рядки
+                .trim();
+    }
 
-        for (AiActionDto action : actions) {
-            Optional<Device> deviceOpt = deviceRepository.findById(action.deviceId());
+    private String executeDeviceControl(String argsJson) {
+        try {
+            JsonNode argsNode = objectMapper.readTree(argsJson);
+            JsonNode actionsNode = argsNode.path("actions");
 
-            if (deviceOpt.isPresent()) {
-                Device device = deviceOpt.get();
-                // Працюємо з Enum замість магічних рядків!
-                DeviceStatus newStatus = DeviceStatus.valueOf(action.targetStatus());
-                device.setStatus(newStatus);
+            List<AiActionDto> actions = objectMapper.convertValue(actionsNode, new TypeReference<>() {});
 
-                if (action.targetValue() != null) {
-                    device.setTargetValue(action.targetValue());
-                }
+            // 🔥 Отримуємо сутності через безпечний шар сервісу
+            List<Device> allDevices = deviceService.getAllEntities();
+            List<Device> devicesToUpdate = new ArrayList<>();
+            List<String> executed = new ArrayList<>();
 
-                devicesToUpdate.add(device);
+            for (AiActionDto action : actions) {
+                allDevices.stream()
+                        .filter(d -> d.getId().equals(action.deviceId()))
+                        .findFirst()
+                        .ifPresent(device -> {
+                            device.setStatus(DeviceStatus.valueOf(action.targetStatus()));
+                            devicesToUpdate.add(device);
 
-                // Формуємо красиву відповідь
-                String statusUkr = newStatus == DeviceStatus.ON ? "увімкнено" : "вимкнено";
-                if (action.targetValue() != null) {
-                    statusUkr = "встановлено на " + action.targetValue();
-                }
-                spokenMessages.add(device.getName() + " " + statusUkr);
+                            String status = "ON".equals(action.targetStatus()) ? "увімкнено" : "вимкнено";
+                            executed.add(device.getName() + " " + status);
+                        });
             }
-        }
 
-        // Оптимізація бази даних: зберігаємо всі змінені пристрої одним запитом
-        if (!devicesToUpdate.isEmpty()) {
-            deviceRepository.saveAll(devicesToUpdate);
-        }
+            // 🔥 Зберігаємо через безпечний шар сервісу
+            deviceService.saveAllEntities(devicesToUpdate);
 
-        return buildFinalMessage(spokenMessages);
+            if (executed.isEmpty()) {
+                return "Нічого не змінено.";
+            }
+
+            return "Зроблено, сер. " + String.join(", ", executed) + ".";
+
+        } catch (Exception e) {
+            log.error("Помилка виконання control_devices: ", e);
+            return "Помилка керування.";
+        }
     }
 
-    private String buildFinalMessage(List<String> messages) {
-        if (messages.isEmpty()) {
-            return "Команду розпізнано, але стан пристроїв не змінився.";
-        } else if (messages.size() == 1) {
-            return "Зроблено, сер. " + messages.getFirst() + ".";
-        } else if (messages.size() == 2) {
-            return "Зроблено, сер. " + messages.get(0) + " та " + messages.get(1).toLowerCase() + ".";
-        } else {
-            return "Зроблено, сер. Усі вказані системи успішно оновлено.";
+    // Метод для обробки аудіо-файлів (HTTP REST)
+    public String processAudioCommand(org.springframework.web.multipart.MultipartFile audioFile) {
+        String text = aiClient.transcribeAudio(audioFile);
+
+        if (text == null || text.trim().isEmpty()) {
+            return "Вибачте, сер. Я не розчув вашу команду.";
+        }
+
+        String lowerText = text.toLowerCase();
+        if (!lowerText.contains("джарвіс") && !lowerText.contains("джарвис") && !lowerText.contains("jarvis")) {
+            log.info("Проігноровано Whisper: немає слова-тригера. Почуто: {}", text);
+            return "";
+        }
+
+        String command = lowerText
+                .replaceAll("(?i)(джарвіс|джарвис|jarvis)[.,!?-]*", "")
+                .trim();
+
+        if (command.isEmpty()) {
+            return "Я вас слухаю, сер. Яку команду виконати?";
+        }
+
+        log.info("Передаємо в Agentic Workflow очищену команду: {}", command);
+        return processVoiceCommand(command);
+    }
+
+    private String executeWebSearch(String argsJson) {
+        try {
+            JsonNode argsNode = objectMapper.readTree(argsJson);
+            String query = argsNode.path("query").asString();
+
+            log.info("🔍 search: {}", query);
+
+            return searchTool.executeSearch(query);
+
+        } catch (Exception e) {
+            log.error("Помилка пошуку: ", e);
+            return "Помилка пошуку.";
         }
     }
 }

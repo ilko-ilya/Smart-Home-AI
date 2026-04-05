@@ -3,16 +3,10 @@ spring:
     url: jdbc:postgresql://db:5432/${POSTGRES_DB}
     username: ${POSTGRES_USER}
     password: ${POSTGRES_PASSWORD}
-#
-#  sql:
-#    init:
-#      mode: never
 
   jpa:
     hibernate:
-#      ddl-auto: none
-      ddl-auto: update
-#    defer-datasource-initialization: true
+      ddl-auto: validate
     show-sql: true
     properties:
       hibernate:
@@ -26,9 +20,11 @@ server:
   port: 8080
 
 weather:
-  url: "https://api.open-meteo.com/v1/forecast?latitude=50.51&longitude=30.79&current_weather=true"
+  url: "https://api.open-meteo.com/v1/forecast?latitude=${WEATHER_LAT}&longitude=${WEATHER_LON}&current_weather=true"
 
 ai:
   groq:
     api-key: ${GROQ_API_KEY}
     url: "https://api.groq.com/openai/v1/chat/completions"
+  tavily:
+    api-key: ${TAVILY_API_KEY}

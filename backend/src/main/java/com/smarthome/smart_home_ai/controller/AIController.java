@@ -6,10 +6,15 @@ import com.smarthome.smart_home_ai.service.AIService;
 import com.smarthome.smart_home_ai.service.JarvisService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
+
+import static org.springframework.http.MediaType.MULTIPART_FORM_DATA_VALUE;
 
 @Slf4j
 @RestController
@@ -28,6 +33,12 @@ public class AIController {
     @PostMapping("/voice")
     public String executeVoiceCommand(@RequestBody VoiceCommandDto command) {
         return jarvisService.processVoiceCommand(command.text());
+    }
+
+    @PostMapping(value = "/voice/audio", consumes = MULTIPART_FORM_DATA_VALUE)
+    public ResponseEntity<String> handleAudioCommand(@RequestParam("file") MultipartFile file) {
+        String response = jarvisService.processAudioCommand(file);
+        return ResponseEntity.ok(response);
     }
 
 }

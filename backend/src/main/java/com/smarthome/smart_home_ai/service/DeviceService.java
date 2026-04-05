@@ -43,9 +43,10 @@ public class DeviceService {
         return deviceMapper.toDto(deviceRepository.save(device));
     }
 
+    @Transactional
     public DeviceDto updateDeviceValue(Long id, Integer newValue) {
         Device device = deviceRepository.findById(id)
-                .orElseThrow(() -> new RuntimeException("Устройство не найдено"));
+                .orElseThrow(() -> new EntityNotFoundException("Device with id " + id + " not found"));
 
         device.setTargetValue(newValue);
 
@@ -57,5 +58,17 @@ public class DeviceService {
 
         Device savedDevice = deviceRepository.save(device);
         return deviceMapper.toDto(savedDevice);
+    }
+
+    // Метод для внутрішнього використання сервісами (не віддає DTO)
+    @Transactional(readOnly = true)
+    public List<Device> getAllEntities() {
+        return deviceRepository.findAll();
+    }
+
+    // Метод для масового збереження (використовується в сценаріях)
+    @Transactional
+    public void saveAllEntities(List<Device> devices) {
+        deviceRepository.saveAll(devices);
     }
 }

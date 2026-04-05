@@ -2,6 +2,7 @@ package com.smarthome.smart_home_ai.controller;
 
 import com.smarthome.smart_home_ai.dto.DeviceDto;
 import com.smarthome.smart_home_ai.service.DeviceService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -28,7 +29,7 @@ public class DeviceController {
     }
 
     @PostMapping
-    public DeviceDto createDevice(@RequestBody DeviceDto deviceDto) {
+    public DeviceDto createDevice(@Valid @RequestBody DeviceDto deviceDto) {
         return deviceService.createDevice(deviceDto);
     }
 

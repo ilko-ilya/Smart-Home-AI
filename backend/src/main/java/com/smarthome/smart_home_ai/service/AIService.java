@@ -23,13 +23,9 @@ public class AIService {
     private final DeviceService deviceService;
     private final SensorDataService sensorDataService;
     private final WeatherService weatherService;
-    private final RestClient restClient;
 
-    @Value("${ai.groq.api-key}")
-    private String apiKey;
-
-    @Value("${ai.groq.url}")
-    private String apiUrl;
+    // 🔥 Вирішення Пункту 3.1: Використовуємо наш єдиний клієнт замість дублювання RestClient
+    private final AiClient aiClient;
 
     public AiResponseDto getRecommendation() {
         // 1. ЗБИРАЄМО ДАНІ З УСЬОГО БУДИНКУ
@@ -45,7 +41,7 @@ public class AIService {
 
         if (activeDevices.isEmpty()) activeDevices = "Нічого не увімкнено";
 
-        // 2. ФОРМУЄМО PROMPT (Текст запиту українською)
+        // 2. ФОРМУЄМО PROMPT
         String prompt = String.format(
                 "Температура надворі: %s °C. " +
                         "Температура вдома: %s °C (вологість %s%%). " +
@@ -59,32 +55,19 @@ public class AIService {
 
         log.info("Запитуємо пораду в ШІ: {}", prompt);
 
-        // 3. ВИКЛИКАЄМО НЕЙРОМЕРЕЖУ (Llama 3.1)
+        // 3. ВИКЛИКАЄМО НЕЙРОМЕРЕЖУ ЧЕРЕЗ AiClient
         try {
-            Map<String, Object> requestBody = Map.of(
-                    "model", "llama-3.1-8b-instant",
-                    "messages", List.of(
-                            Map.of("role", "system", "content", "Ти елітний AI-дворецький (Джарвіс). Твоя мета - дати ОДНУ коротку та абсолютно логічну пораду (максимум 2 речення). Категорично заборонено повторювати слова або писати безглуздий текст. Завжди звертайся до користувача 'сер'."),
-                            Map.of("role", "user", "content", prompt)
-                    ),
-                    "temperature", 0.3 // 🔥 Знизили температуру, щоб прибрати галюцинації
-            );
+            String systemPrompt = "Ти елітний AI-дворецький (Джарвіс). Твоя мета - дати ОДНУ коротку та абсолютно логічну пораду (максимум 2 речення). Категорично заборонено повторювати слова або писати безглуздий текст. Завжди звертайся до користувача 'сер'.";
 
-            JsonNode rootResponse = restClient.post()
-                    .uri(apiUrl)
-                    .header("Authorization", "Bearer " + apiKey)
-                    .header("Content-Type", "application/json")
-                    .body(requestBody)
-                    .retrieve()
-                    .body(JsonNode.class);
+            // Делегуємо запит у спеціальний клієнт
+            String advice = aiClient.getAdvice(systemPrompt, prompt);
 
-            assert rootResponse != null;
-            String advice = rootResponse.path("choices").get(0)
-                    .path("message")
-                    .path("content")
-                    .asString();
+            // 🔥 Вирішення Пункту 1.4: Нормальна перевірка на null замість assert
+            if (advice == null || advice.isBlank()) {
+                log.error("AI повернув порожню відповідь");
+                return new AiResponseDto("Вибачте, сер. Мої модулі аналізу тимчасово перевантажені.");
+            }
 
-            // Додаткова перевірка: якщо ІА все ж таки видав бред, обрізаємо його
             if (advice.length() > 200) {
                 advice = advice.substring(0, 200) + "...";
             }
@@ -92,8 +75,8 @@ public class AIService {
             return new AiResponseDto(advice);
 
         } catch (Exception e) {
-            log.error("Помилка під час запиту до Groq API: {}", e.getMessage(), e);
-            return new AiResponseDto("Вибачте, сер. Мої модулі аналізу тимчасово перевантажені.");
+            log.error("Помилка під час отримання рекомендації: {}", e.getMessage(), e);
+            return new AiResponseDto("Вибачте, сер. Виникла помилка в системі аналітики.");
         }
     }
 

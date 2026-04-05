@@ -6,6 +6,7 @@ import com.smarthome.smart_home_ai.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
@@ -16,13 +17,14 @@ import java.util.Set;
 @RequiredArgsConstructor
 public class ScenarioService {
 
-    private final DeviceRepository deviceRepository;
+    private final DeviceService deviceService;
 
     // Використовуємо Set для миттєвого пошуку O(1)
     private static final Set<String> SECURITY_TYPES = Set.of(
             "SECURITY_SENSOR", "MOTION_SENSOR", "DOOR_SENSOR", "VACUUM"
     );
 
+    @Transactional
     public Optional<String> handleScenario(String text) {
         // Переводимо все в нижній регістр один раз для надійності
         String lowerText = text.toLowerCase();
@@ -38,7 +40,7 @@ public class ScenarioService {
         return text.contains("йду") || text.contains("иду") ||
                 text.contains("виходжу") || text.contains("ухожу") ||
                 text.contains("пішов") || text.contains("ушел") ||
-                text.contains("охорону");
+                text.contains("охорону") || text.contains("я пошёл") || text.contains("пошел");
     }
 
     private boolean isComingHome(String text) {
@@ -49,7 +51,8 @@ public class ScenarioService {
     }
 
     private String handleLeavingHome() {
-        List<Device> devices = deviceRepository.findAll();
+        // Отримуємо сутності через сервіс-прошарок
+        List<Device> devices = deviceService.getAllEntities();
 
         for (Device device : devices) {
             if (SECURITY_TYPES.contains(device.getType().name())) {
@@ -59,16 +62,18 @@ public class ScenarioService {
                 device.setStatus(DeviceStatus.OFF);
             }
         }
-        deviceRepository.saveAll(devices);
+        // Зберігаємо через сервіс-прошарок
+        deviceService.saveAllEntities(devices);
         return "Протокол захисту активовано, сер. Будинок під охороною, прилади знеструмлено.";
     }
 
     private String handleComingHome() {
-        List<Device> devices = deviceRepository.findAll();
+        List<Device> devices = deviceService.getAllEntities();
 
         for (Device device : devices) {
             String type = device.getType().name();
-            String name = device.getName().toLowerCase();
+            // Беремо кімнату (toUpperCase для надійного порівняння)
+            String room = device.getRoom() != null ? device.getRoom().toUpperCase() : "";
 
             if (SECURITY_TYPES.contains(type)) {
                 // Вимикаємо охорону та пилосос
@@ -77,16 +82,17 @@ public class ScenarioService {
                 // Вмикаємо музику
                 device.setStatus(DeviceStatus.ON);
                 device.setTargetValue(20);
-            } else if (type.equals("LIGHT") && name.contains("основне світло")) {
-                // Вмикаємо ТІЛЬКИ основне світло
+
+                // 🔥 Пункт 2.3: Надійний пошук! Вмикаємо СВІТЛО, яке знаходиться у ВІТАЛЬНІ
+            } else if (type.equals("LIGHT") && room.contains("ВІТАЛЬНЯ")) {
                 device.setStatus(DeviceStatus.ON);
                 device.setTargetValue(100);
             } else {
-                // 🔥 ЖОРСТКО вимикаємо абсолютно все інше (ТБ, кондиціонер, інші лампи)
+                // ЖОРСТКО вимикаємо абсолютно все інше
                 device.setStatus(DeviceStatus.OFF);
             }
         }
-        deviceRepository.saveAll(devices);
+        deviceService.saveAllEntities(devices);
         return "З поверненням, сер! Охорону знято. Вмикаю світло та легку музику.";
     }
 }
