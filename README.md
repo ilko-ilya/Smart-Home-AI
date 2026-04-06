@@ -27,21 +27,21 @@ This is not just a chatbot — it is a real AI agent capable of controlling devi
 ## 🧭 System Flow
 
 ```text
-User (Voice)
+User (Voice/Text)
         ↓
 Whisper STT
         ↓
 JarvisService (Orchestrator)
         ↓
-AI (Groq LLM)
-   ↙          ↘
-Tools        Direct Response
+LLM (Groq - Llama 3.3)
+   ↙              ↘
+Tool Calls       Direct Response
    ↓
-DB / Search APIs
+Backend Logic (DB / Search APIs)
         ↓
-AI Final Response
+LLM Final Response
         ↓
-Cartesia TTS (via Next.js Proxy)
+TTS (Cartesia via Next.js BFF)
         ↓
 User hears response 🎧
 ```
@@ -139,6 +139,34 @@ This system uses **Tool Calling (Function Calling)** instead of simple prompting
 
 ---
 
+## 🎯 User Experience (UX)
+
+- **Trigger word activation:** System listens securely and activates only on "Jarvis".
+- **Natural language commands:** Multi-language input supported (handles complex, unstructured sentences).
+- **Instant feedback:** Real-time UI updates and immediate voice responses.
+
+---
+
+## ⚠️ Known Limitations
+
+- **State Management:** Tavily API request counter is in-memory and resets on application restart.
+- **Latency:** External APIs (Groq, Cartesia, Tavily) may introduce slight network-dependent latency.
+- **Throttling:** No application-level rate limiting yet for TTS/LLM endpoints.
+
+---
+
+## 🧪 Testing
+
+**Currently Implemented:**
+- Manual End-to-End (E2E) testing (Voice → STT → Agentic Loop → Device execution → TTS).
+- Web Search fallback validation.
+
+**Planned:**
+- Unit tests for core services (`JarvisService`, `ScenarioService`).
+- Integration tests for the Agentic Workflow and Database transactions.
+
+---
+
 ## ❗ What Makes This Project Different
 
 This is **NOT** a simple chatbot wrapper.
@@ -149,7 +177,7 @@ This is **NOT** a simple chatbot wrapper.
 ✔ Voice-first architecture with premium Audio  
 ✔ Deterministic + AI hybrid
 
-This behaves like a real AI agent, not a ChatGPT UI.
+This system behaves as a true AI agent capable of decision-making, tool execution, and context-aware responses.
 
 ---
 
