@@ -48,41 +48,38 @@ User hears response 🎧
 
 ---
 
-## 🔊 Voice Interaction (STT + TTS)
+## 🔊 Text-to-Speech (TTS) Architecture
 
-The system supports a full duplex voice interaction:
+The system uses the **Cartesia API** for high-fidelity voice responses.
 
-1. 🎤 **User speaks command**
-2. Whisper converts speech → text
-3. AI processes request using Agentic Loop
-4. Response is generated in Ukrainian
-5. 🔊 Cartesia TTS converts text → natural voice
-6. **User hears response in real-time**
+**🔒 Security (BFF Pattern)**
+API keys are NEVER exposed to the client. We implemented a Backend-for-Frontend (BFF) approach:
+`Frontend → Next.js API Route (/api/tts) → Cartesia API`
 
-**Example:**
-
-**User:** "Jarvis, turn on the lights"  
-**Jarvis:** "Done, sir. The lights are turned on." (spoken)
-
-✔️ Natural conversation experience  
-✔️ No UI required  
-✔️ Real assistant behavior
+**📁 Implementation Details:**
+* `frontend/app/api/tts/route.ts` (Server-side proxy)
+* `frontend/utils/jarvisVoice.ts` (Client-side consumer)
+* `.env.local` (Secure key storage, ignored by Git)
 
 ---
 
-## 🔒 Text-to-Speech (TTS) Architecture
+## 🛡️ Resilience & Fault Tolerance
 
-To provide high-fidelity voice feedback, the system integrates the **Cartesia TTS API** (Sonic-3 model).
+* **Tavily → DuckDuckGo Fallback:** Automatic switch to HTML parsing if the primary search API fails or rate-limits (no downtime).
+* **Defensive Execution:** Strict protection against empty AI responses, missing TTS text, and infinite AI tool-calling loops.
+* **Smart Noise Filtering:** Whisper STT ignores background noise and hallucinations, activating strictly via the trigger word ("Jarvis").
+* **Payload Optimization:** Search results are truncated to 1000 characters to save LLM tokens and reduce latency.
+* **Planned Improvements:** Retry & timeout policies, Circuit Breaker pattern for external API calls.
 
-### Secure API Handling (BFF Pattern)
-For security reasons, the Cartesia API key is NEVER exposed to the browser. Instead, a Next.js server-side proxy endpoint is used (Backend-for-Frontend):
+*System is designed to never fail silently.*
 
-`Frontend Client` → `Next.js API Route (/api/tts)` → `Cartesia API`
+---
 
-### Implementation
-- `frontend/app/api/tts/route.ts` — Server-side proxy handling the actual API request.
-- `.env.local` — Stores `CARTESIA_API_KEY` securely on the server.
-- `speakJarvis()` — Client-side function that requests the audio buffer and plays it instantly.
+## 🔐 Security Architecture
+
+* **Zero Client Exposure:** All third-party API keys (Cartesia, Groq, Tavily) are strictly kept on the server.
+* **Server-Side Proxy (BFF):** Used for TTS to prevent token leakage in the browser.
+* **DTO Isolation:** Hides internal database structure (Entities) from the AI and the frontend client, transferring only necessary data.
 
 ---
 
@@ -128,18 +125,6 @@ This system uses **Tool Calling (Function Calling)** instead of simple prompting
 ✔ Context-aware  
 ✔ Flexible  
 ✔ Extensible
-
----
-
-## 🛡️ Resilience & Fault Tolerance
-
-- **Tavily → DuckDuckGo fallback** (no downtime if rate-limited).
-- Protection against empty AI responses and missing TTS text.
-- Whisper noise filtering (trigger word: "Jarvis").
-- Tool loop protection (prevents endless AI tool-calling loops).
-- Search result cleaning (truncating to 1000 chars to save tokens).
-
-*System is designed to never fail silently.*
 
 ---
 
