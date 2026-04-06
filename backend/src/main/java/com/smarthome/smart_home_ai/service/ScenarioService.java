@@ -2,7 +2,6 @@ package com.smarthome.smart_home_ai.service;
 
 import com.smarthome.smart_home_ai.model.Device;
 import com.smarthome.smart_home_ai.model.enums.DeviceStatus;
-import com.smarthome.smart_home_ai.repository.DeviceRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -84,7 +83,7 @@ public class ScenarioService {
                 device.setTargetValue(20);
 
                 // 🔥 Пункт 2.3: Надійний пошук! Вмикаємо СВІТЛО, яке знаходиться у ВІТАЛЬНІ
-            } else if (type.equals("LIGHT") && room.contains("ВІТАЛЬНЯ")) {
+            } else if (type.equals("LIGHT") && room.contains("ВІТАЛЬНЯ") && !device.getName().toLowerCase().contains("торшер")) {
                 device.setStatus(DeviceStatus.ON);
                 device.setTargetValue(100);
             } else {
